@@ -142,8 +142,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_keyboard = [
         ["/start", "/servers"],
         ["/check_servers", "/deploy_scripts"],
-        ["/delete_server"],
-        ["/cancel"]
+        ["/delete_server", "/stop_all"]
     ]
     markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
     
@@ -914,6 +913,66 @@ async def update_github_file(repo: str, token: str, file_path: str, content: str
 
     return await loop.run_in_executor(None, _sync_request)
 
+async def stop_all_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Stop all running workflows on all servers"""
+    if update.effective_chat.id != ALLOWED_CHAT_ID:
+        return
+
+    status_msg = await update.message.reply_text("🛑 جاري إيقاف جميع العمليات...")
+    
+    results = []
+    
+    # helper for async cancellation
+    async def cancel_workflows(repo, token):
+        try:
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github.v3+json"
+            }
+            # 1. List valid runs (in_progress or queued)
+            url = f"https://api.github.com/repos/{repo}/actions/runs?status=in_progress"
+            
+            loop = asyncio.get_running_loop()
+            resp = await loop.run_in_executor(None, lambda: requests.get(url, headers=headers))
+            
+            if resp.status_code != 200:
+                return f"⚠️ {repo}: Could not list runs ({resp.status_code})"
+            
+            runs = resp.json().get("workflow_runs", [])
+            if not runs:
+                return None # No active runs
+            
+            stopped_count = 0
+            for run in runs:
+                run_id = run['id']
+                cancel_url = f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/cancel"
+                await loop.run_in_executor(None, lambda: requests.post(cancel_url, headers=headers))
+                stopped_count += 1
+            
+            return f"🛑 {repo}: Stopped {stopped_count} runs"
+            
+        except Exception as e:
+            return f"❌ {repo}: Error {str(e)}"
+
+    # Run for all servers
+    tasks = []
+    for key, server in SERVERS.items():
+        if not server['token']:
+            continue
+        tasks.append(cancel_workflows(server['repo'], server['token']))
+    
+    # Execute parallel
+    stop_results = await asyncio.gather(*tasks)
+    
+    # Filter out None (no runs)
+    active_stops = [r for r in stop_results if r]
+    
+    if not active_stops:
+        await status_msg.edit_text("✅ لا توجد عمليات نشطة حالياً.")
+    else:
+        report = "🛑 **تقرير الإيقاف (Stop Report)**:\n\n" + "\n".join(active_stops)
+        await status_msg.edit_text(report)
+
 async def deploy_scripts_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Deploy local files to all active servers"""
     if update.effective_chat.id != ALLOWED_CHAT_ID:
@@ -986,6 +1045,7 @@ def main():
     application.add_handler(CommandHandler("status", status))
     application.add_handler(CommandHandler("check_servers", check_servers_command))
     application.add_handler(CommandHandler("deploy_scripts", deploy_scripts_command))
+    application.add_handler(CommandHandler("stop_all", stop_all_command))
     application.add_handler(CommandHandler("delete_server", delete_server_command))
 
 
