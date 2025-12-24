@@ -963,7 +963,7 @@ async def deploy_scripts_command(update: Update, context: ContextTypes.DEFAULT_T
         
     report = "📊 **تقرير النشر (Deploy Report)**:\n\n" + "\n".join(results)
     report += "\n\n📦 الملفات المنشورة:\n• fb_otp_browser.py\n• .github/workflows/fb_otp.yml\n• requirements.txt"
-    await status_msg.edit_text(report, parse_mode='Markdown')
+    await status_msg.edit_text(report)
 
 
 
