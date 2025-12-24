@@ -864,51 +864,55 @@ async def check_servers_command(update: Update, context: ContextTypes.DEFAULT_TY
 # --- DEPLOYMENT HELPERS ---
 import base64
 
-def update_github_file(repo: str, token: str, file_path: str, content: str, branch: str = 'master') -> bool:
-    """Update a file in a GitHub repository via API"""
+async def update_github_file(repo: str, token: str, file_path: str, content: str, branch: str = 'master') -> bool:
+    """Update a file in a GitHub repository via API (Async wrapper)"""
     url = f"https://api.github.com/repos/{repo}/contents/{file_path}"
     headers = {
         "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github.v3+json"
     }
-    
-    # 1. Get current file SHA (if exists)
-    # Must also pass branch to get correct SHA
-    params = {"ref": branch}
-    sha = None
-    try:
-        resp = requests.get(url, headers=headers, params=params)
-        if resp.status_code == 200:
-            sha = resp.json().get('sha')
-        elif resp.status_code == 404:
-            pass # Create new
-        else:
-            logger.error(f"Error getting file info for {repo}/{file_path} (ref={branch}): {resp.status_code}")
-            return False
-    except Exception as e:
-        logger.error(f"Exception getting file info: {e}")
-        return False
 
-    # 2. Update/Create file
-    try:
-        encoded_content = base64.b64encode(content.encode('utf-8')).decode('utf-8')
-        data = {
-            "message": "Auto-deploy: Update script via Bot",
-            "content": encoded_content,
-            "branch": branch 
-        }
-        if sha:
-            data["sha"] = sha
-            
-        put_resp = requests.put(url, headers=headers, json=data)
-        if put_resp.status_code in [200, 201]:
-            return True
-        else:
-            logger.error(f"Error updating file {repo}/{file_path}: {put_resp.status_code} {put_resp.text}")
+    loop = asyncio.get_running_loop()
+
+    def _sync_request():
+        # 1. Get current file SHA (if exists)
+        params = {"ref": branch}
+        sha = None
+        try:
+            resp = requests.get(url, headers=headers, params=params)
+            if resp.status_code == 200:
+                sha = resp.json().get('sha')
+            elif resp.status_code == 404:
+                pass # Create new
+            else:
+                logger.error(f"Error getting file info for {repo}/{file_path} (ref={branch}): {resp.status_code}")
+                return False
+        except Exception as e:
+            logger.error(f"Exception getting file info: {e}")
             return False
-    except Exception as e:
-        logger.error(f"Exception updating file: {e}")
-        return False
+
+        # 2. Update/Create file
+        try:
+            encoded_content = base64.b64encode(content.encode('utf-8')).decode('utf-8')
+            data = {
+                "message": "Auto-deploy: Update script via Bot",
+                "content": encoded_content,
+                "branch": branch 
+            }
+            if sha:
+                data["sha"] = sha
+                
+            put_resp = requests.put(url, headers=headers, json=data)
+            if put_resp.status_code in [200, 201]:
+                return True
+            else:
+                logger.error(f"Error updating file {repo}/{file_path}: {put_resp.status_code} {put_resp.text}")
+                return False
+        except Exception as e:
+            logger.error(f"Exception updating file: {e}")
+            return False
+
+    return await loop.run_in_executor(None, _sync_request)
 
 async def deploy_scripts_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Deploy local files to all active servers"""
@@ -953,7 +957,7 @@ async def deploy_scripts_command(update: Update, context: ContextTypes.DEFAULT_T
         # Deploy all files
         files_success = []
         for remote_path, content in file_contents.items():
-            success = update_github_file(server['repo'], server['token'], remote_path, content, branch)
+            success = await update_github_file(server['repo'], server['token'], remote_path, content, branch)
             files_success.append(success)
         
         # All files must succeed
