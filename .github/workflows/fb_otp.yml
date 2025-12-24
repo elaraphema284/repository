@@ -87,13 +87,38 @@ jobs:
       - name: Install Chrome
         uses: browser-actions/setup-chrome@latest
       
-      - name: WARP
-        uses: fscarmen/warp-on-actions@v1.2
-        with:
-          stack: dual
-      
       - name: Install dependencies
-        run: pip install selenium webdriver-manager requests selenium-wire
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openvpn unzip
+          pip install selenium webdriver-manager requests selenium-wire
+
+      - name: Connect to ProtonVPN
+        env:
+          PROTON_USER: ${{ secrets.PROTON_USER }}
+          PROTON_PASS: ${{ secrets.PROTON_PASS }}
+          PROTON_CONFIG: ${{ secrets.PROTON_CONFIG_BASE64 }}
+        run: |
+          # 1. Create Auth File
+          echo "$PROTON_USER" > proton-auth.txt
+          echo "$PROTON_PASS" >> proton-auth.txt
+          chmod 600 proton-auth.txt
+          
+          # 2. Decode Config (fail if missing)
+          if [ -z "$PROTON_CONFIG" ]; then
+            echo "❌ ERROR: PROTON_CONFIG_BASE64 secret is missing!"
+            exit 1
+          fi
+          echo "$PROTON_CONFIG" | base64 -d > proton.ovpn
+          
+          # 3. Start OpenVPN
+          echo "Connecting to ProtonVPN..."
+          sudo openvpn --config proton.ovpn --auth-user-pass proton-auth.txt --daemon
+          
+          # 4. Wait for connection
+          timeout 30s bash -c 'until pgrep openvpn > /dev/null; do sleep 1; done'
+          sleep 10 # Allow network to stabilize
+          echo "✅ ProtonVPN Started"
       
       - name: Get IP and WARP Status
         id: ip
