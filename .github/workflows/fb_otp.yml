@@ -106,9 +106,12 @@ jobs:
           1
           EOF
           
-          # Connect to random free server
-          echo "Connecting to random free server..."
-          sudo protonvpn c -r
+          # Connect to random non-EU server (US or JP only)
+          echo "Connecting to random non-EU server..."
+          COUNTRIES=("US" "JP")
+          COUNTRY=${COUNTRIES[$RANDOM % ${#COUNTRIES[@]}]}
+          echo "Selected country: $COUNTRY"
+          sudo protonvpn c --cc $COUNTRY
           
           # Verify connection
           sleep 5
