@@ -165,6 +165,9 @@ jobs:
           expect -nocase "preferred protocol"
           send -- "1\r"
           
+          expect -nocase "correct?"
+          send -- "y\r"
+          
           expect eof
           EOF
           
