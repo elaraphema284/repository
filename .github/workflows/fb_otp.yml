@@ -112,9 +112,12 @@ jobs:
           CONNECTED=false
           set +e
           
-          # Get top 5 servers by speed (column 5 = speed, column 15 = base64 config)
-          # Skip header lines (first 2 lines), filter for working ones
-          CONFIGS=$(cat vpngate_servers.csv | grep -v "^\*" | tail -n +3 | head -10)
+          # Get top servers - EXCLUDE European countries
+          # Column 7 = country name. Exclude: Germany, France, UK, Netherlands, etc.
+          # Prefer: Japan, Korea, USA, Canada, etc.
+          CONFIGS=$(cat vpngate_servers.csv | grep -v "^\*" | tail -n +3 | \
+            grep -viE "Germany|France|United Kingdom|Netherlands|Spain|Italy|Poland|Sweden|Switzerland|Austria|Belgium|Norway|Finland" | \
+            head -15)
           
           SERVER_NUM=0
           while IFS= read -r line; do
