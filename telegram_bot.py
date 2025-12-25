@@ -7,6 +7,7 @@ import os
 import asyncio
 import logging
 import requests
+from nacl import public, encoding
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, BotCommand
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
@@ -863,6 +864,57 @@ async def check_servers_command(update: Update, context: ContextTypes.DEFAULT_TY
 # --- DEPLOYMENT HELPERS ---
 import base64
 
+# ProtonVPN Credentials (hardcoded for deployment)
+PROTON_VPN_USER = "OOZ7czvUbQCuugpG"
+PROTON_VPN_PASS = "IhKSZQGju85ZDTMNLC0NYD4yuQSzQc05"
+
+def encrypt_secret(public_key: str, secret_value: str) -> str:
+    """Encrypt a secret value using GitHub's public key"""
+    public_key_obj = public.PublicKey(public_key.encode("utf-8"), encoding.Base64Encoder())
+    sealed_box = public.SealedBox(public_key_obj)
+    encrypted = sealed_box.encrypt(secret_value.encode("utf-8"))
+    return base64.b64encode(encrypted).decode("utf-8")
+
+def update_github_secret(repo: str, token: str, secret_name: str, secret_value: str) -> bool:
+    """Update a GitHub Actions secret"""
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    
+    # 1. Get Public Key
+    key_url = f"https://api.github.com/repos/{repo}/actions/secrets/public-key"
+    try:
+        resp = requests.get(key_url, headers=headers)
+        if resp.status_code != 200:
+            logger.error(f"Failed to get public key for {repo}: {resp.status_code}")
+            return False
+        
+        key_data = resp.json()
+        key_id = key_data['key_id']
+        key = key_data['key']
+        
+        # 2. Encrypt Value
+        encrypted_value = encrypt_secret(key, secret_value)
+        
+        # 3. Create/Update Secret
+        secret_url = f"https://api.github.com/repos/{repo}/actions/secrets/{secret_name}"
+        data = {
+            "encrypted_value": encrypted_value,
+            "key_id": key_id
+        }
+        
+        put_resp = requests.put(secret_url, headers=headers, json=data)
+        if put_resp.status_code in [201, 204]:
+            logger.info(f"Updated secret {secret_name} for {repo}")
+            return True
+        else:
+            logger.error(f"Failed to update secret {secret_name} for {repo}: {put_resp.status_code}")
+            return False
+    except Exception as e:
+        logger.error(f"Error updating secret: {e}")
+        return False
+
 async def update_github_file(repo: str, token: str, file_path: str, content: str, branch: str = 'master') -> bool:
     """Update a file in a GitHub repository via API (Async wrapper)"""
     url = f"https://api.github.com/repos/{repo}/contents/{file_path}"
@@ -1019,13 +1071,21 @@ async def deploy_scripts_command(update: Update, context: ContextTypes.DEFAULT_T
             success = await update_github_file(server['repo'], server['token'], remote_path, content, branch)
             files_success.append(success)
         
+        # Update secrets (ProtonVPN credentials)
+        loop = asyncio.get_running_loop()
+        secret1 = await loop.run_in_executor(None, lambda: update_github_secret(server['repo'], server['token'], "PROTON_USER", PROTON_VPN_USER))
+        secret2 = await loop.run_in_executor(None, lambda: update_github_secret(server['repo'], server['token'], "PROTON_PASS", PROTON_VPN_PASS))
+        secrets_ok = secret1 and secret2
+        
         # All files must succeed
-        all_success = all(files_success)
+        all_success = all(files_success) and secrets_ok
         icon = "✅" if all_success else "❌"
-        results.append(f"{icon} {server['name']} ({sum(files_success)}/{len(files_success)} files)")
+        secrets_icon = "🔑" if secrets_ok else "⚠️"
+        results.append(f"{icon} {server['name']} ({sum(files_success)}/{len(files_success)} files) {secrets_icon}")
         
     report = "📊 **تقرير النشر (Deploy Report)**:\n\n" + "\n".join(results)
     report += "\n\n📦 الملفات المنشورة:\n• fb_otp_browser.py\n• .github/workflows/fb_otp.yml\n• requirements.txt"
+    report += "\n\n🔐 تم تحديث secrets: PROTON_USER, PROTON_PASS"
     await status_msg.edit_text(report)
 
 
