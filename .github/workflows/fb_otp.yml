@@ -112,11 +112,11 @@ jobs:
           CONNECTED=false
           set +e
           
-          # Get top servers - EXCLUDE European countries
-          # Column 7 = country name. Exclude: Germany, France, UK, Netherlands, etc.
-          # Prefer: Japan, Korea, USA, Canada, etc.
+          # Get top servers - EXCLUDE ALL European countries
+          # Prefer: Japan, Korea, USA, Canada, Asia, etc.
+          EUROPE_EXCLUDE="Germany|France|United Kingdom|Netherlands|Spain|Italy|Poland|Sweden|Switzerland|Austria|Belgium|Norway|Finland|Denmark|Ireland|Portugal|Greece|Czech|Romania|Hungary|Bulgaria|Croatia|Slovakia|Slovenia|Estonia|Latvia|Lithuania|Luxembourg|Malta|Cyprus|Iceland|Ukraine|Russia|Belarus|Serbia|Bosnia|Montenegro|Albania|North Macedonia|Moldova"
           CONFIGS=$(cat vpngate_servers.csv | grep -v "^\*" | tail -n +3 | \
-            grep -viE "Germany|France|United Kingdom|Netherlands|Spain|Italy|Poland|Sweden|Switzerland|Austria|Belgium|Norway|Finland" | \
+            grep -viE "$EUROPE_EXCLUDE" | \
             head -15)
           
           SERVER_NUM=0
