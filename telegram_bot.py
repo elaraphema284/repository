@@ -125,12 +125,11 @@ from dateutil import parser as date_parser
 async def post_init(application: Application):
     """Set up bot commands menu"""
     await application.bot.set_my_commands([
-        BotCommand("start", "القائمة الرئيسية"),
-        BotCommand("servers", "إدارة السيرفرات"),
-
-        BotCommand("status", "حالة العمليات"),
-        BotCommand("cancel", "إيقاف الكل"),
-        BotCommand("help", "المساعدة")
+        BotCommand("start", "🏠 القائمة الرئيسية"),
+        BotCommand("servers", "🖥️ إدارة السيرفرات"),
+        BotCommand("check_servers", "🔍 فحص السيرفرات"),
+        BotCommand("deploy_scripts", "🚀 نشر التحديثات"),
+        BotCommand("stop_all", "🛑 إيقاف الكل")
     ])
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -140,9 +139,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     reply_keyboard = [
-        ["/start", "/servers"],
-        ["/check_servers", "/deploy_scripts"],
-        ["/delete_server", "/stop_all"]
+        ["🏠 /start", "🖥️ /servers"],
+        ["🔍 /check_servers", "🚀 /deploy_scripts"],
+        ["🛑 /stop_all"]
     ]
     markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
     
