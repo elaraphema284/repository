@@ -1080,17 +1080,10 @@ async def deploy_scripts_command(update: Update, context: ContextTypes.DEFAULT_T
             success = await update_github_file(server['repo'], server['token'], remote_path, content, branch)
             files_success.append(success)
         
-        # Update secrets (ProtonVPN credentials)
-        loop = asyncio.get_running_loop()
-        secret1 = await loop.run_in_executor(None, lambda: update_github_secret(server['repo'], server['token'], "PROTON_USER", PROTON_VPN_USER))
-        secret2 = await loop.run_in_executor(None, lambda: update_github_secret(server['repo'], server['token'], "PROTON_PASS", PROTON_VPN_PASS))
-        secrets_ok = secret1 and secret2
-        
         # All files must succeed
-        all_success = all(files_success) and secrets_ok
+        all_success = all(files_success)
         icon = "✅" if all_success else "❌"
-        secrets_icon = "🔑" if secrets_ok else "⚠️"
-        results.append(f"{icon} {server['name']} ({sum(files_success)}/{len(files_success)} files) {secrets_icon}")
+        results.append(f"{icon} {server['name']} ({sum(files_success)}/{len(files_success)} files)")
         
     # Count VPN configs
     vpn_count = len([f for f in file_contents.keys() if f.startswith('vpn/')])
@@ -1098,7 +1091,6 @@ async def deploy_scripts_command(update: Update, context: ContextTypes.DEFAULT_T
     report = "📊 **تقرير النشر (Deploy Report)**:\n\n" + "\n".join(results)
     report += f"\n\n📦 الملفات المنشورة ({len(file_contents)} total):\n• fb_otp_browser.py\n• .github/workflows/fb_otp.yml\n• requirements.txt"
     report += f"\n• vpn/ configs: {vpn_count} files"
-    report += "\n\n🔐 تم تحديث secrets: PROTON_USER, PROTON_PASS"
     await status_msg.edit_text(report)
 
 
