@@ -667,7 +667,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     text = update.message.text
-    if text.startswith('/'): return
+    # Ignore any text that looks like a command (starts with / or contains known commands)
+    known_commands = ['/start', '/servers', '/check_servers', '/deploy_scripts', '/stop_all', '/delete_server', '/status', '/cancel', '/help']
+    if text.startswith('/') or any(cmd in text for cmd in known_commands):
+        return
     
     # Check for menu buttons
     if text == "فحص السيرفرات 📡":
