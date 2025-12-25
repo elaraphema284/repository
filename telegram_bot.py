@@ -1039,14 +1039,14 @@ async def deploy_scripts_command(update: Update, context: ContextTypes.DEFAULT_T
         "requirements.txt": "requirements.txt"
     }
     
-    # Add VPN config files from vpn/ folder
-    vpn_folder = "vpn"
-    if os.path.exists(vpn_folder):
-        for filename in os.listdir(vpn_folder):
-            if filename.endswith('.conf') or filename.endswith('.ovpn'):
-                local_path = os.path.join(vpn_folder, filename)
-                remote_path = f"vpn/{filename}"
-                files_to_deploy[local_path] = remote_path
+    # VPN config upload disabled - uncomment when needed
+    # vpn_folder = "vpn"
+    # if os.path.exists(vpn_folder):
+    #     for filename in os.listdir(vpn_folder):
+    #         if filename.endswith('.conf') or filename.endswith('.ovpn'):
+    #             local_path = os.path.join(vpn_folder, filename)
+    #             remote_path = f"vpn/{filename}"
+    #             files_to_deploy[local_path] = remote_path
     
     file_contents = {}
     try:
