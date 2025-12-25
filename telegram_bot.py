@@ -1065,17 +1065,28 @@ async def deploy_scripts_command(update: Update, context: ContextTypes.DEFAULT_T
         return
 
     results = []
+    server_count = len([s for s in SERVERS.values() if s['token']])
+    current = 0
+    
     for key, server in SERVERS.items():
         # Skip if token is missing
         if not server['token']:
             results.append(f"⚠️ {server['name']}: لا يوجد توكن")
             continue
+        
+        current += 1
+        # Update progress
+        try:
+            await status_msg.edit_text(f"🚀 جاري نشر التحديثات... ({current}/{server_count})\n📡 {server['name']}")
+        except:
+            pass
             
         # Use configured branch, default to master
         branch = server.get('branch', 'master')
         
         # Deploy all files
         files_success = []
+        logger.info(f"Deploying {len(file_contents)} files to {server['repo']}")
         for remote_path, content in file_contents.items():
             success = await update_github_file(server['repo'], server['token'], remote_path, content, branch)
             files_success.append(success)
