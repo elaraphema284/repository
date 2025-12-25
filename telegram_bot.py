@@ -153,8 +153,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "⬇️ اختر من القائمة:",
         reply_markup=markup
     )
-    # Also show inline keyboard
-    await update.message.reply_text("التحكم السريع:", reply_markup=get_main_keyboard())
 
 def get_server_keyboard():
     """Return keyboard for server selection (active servers only)"""
