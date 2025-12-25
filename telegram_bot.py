@@ -139,9 +139,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     reply_keyboard = [
-        ["🏠 /start", "🖥️ /servers"],
-        ["🔍 /check_servers", "🚀 /deploy_scripts"],
-        ["🛑 /stop_all"]
+        ["/start", "/servers"],
+        ["/check_servers", "/deploy_scripts"],
+        ["/stop_all"]
     ]
     markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
     
