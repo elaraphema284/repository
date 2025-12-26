@@ -1039,11 +1039,31 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
                 elif status == "TRY_ANOTHER_WAY":
                     log("Redirected to Login - Clicking 'Try Another Way'...", "INFO")
                     try:
-                        # Click the button
-                        # Often the link is essentially /recover/initiate
+                        # Navigate to the recovery initiate page
                         self.driver.get("https://www.facebook.com/recover/initiate/?is_from_lara_screen=1")
-                        time.sleep(5)
-                        # Verify we are now on recovery page
+                        time.sleep(3)
+                        
+                        # RE-ENTER THE PHONE NUMBER on this page
+                        try:
+                            inp = self.driver.find_element(By.ID, "identify_email")
+                            inp.clear()
+                            inp.send_keys(phone)
+                            log(f"Re-entered phone on recovery page: {phone}", "OK")
+                            time.sleep(1)
+                            
+                            # Click Continue/Search on this page
+                            try:
+                                btn = self.driver.find_element(By.ID, "did_submit")
+                                btn.click()
+                            except:
+                                btn = self.driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
+                                btn.click()
+                            log("Clicked search on recovery page", "OK")
+                            time.sleep(3)
+                        except Exception as e:
+                            log(f"Could not re-enter phone: {e}", "WARN")
+                        
+                        # Verify we are now on proper recovery page
                         if "recover" in self.driver.current_url or "reset" in self.driver.current_url:
                              status = "FOUND" # Proceed to next steps
                         else:
