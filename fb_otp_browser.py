@@ -553,69 +553,50 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
     # ==========================================
 
     def _handle_cookie_consent(self):
-        """Handle cookie consent popup if it appears"""
+        """Handle cookie consent popup if it appears - Uses JS to click inner span"""
         try:
-            # Try to find and click "Allow all cookies" button
-            # We use contains(., 'text') to match text inside nested spans/divs
-            cookie_selectors = [
-                # Facebook-specific data-testid (most reliable)
-                (By.CSS_SELECTOR, "[data-testid='cookie-policy-manage-dialog-accept-button']"),
-                (By.CSS_SELECTOR, "button[data-cookiebanner='accept_button']"),
-                # Role-based selectors
-                (By.XPATH, "//div[@role='dialog']//button[@type='submit']"),
-                (By.XPATH, "//div[@role='dialog']//div[@role='button'][1]"),
-                # Text-based (English)
-                (By.XPATH, "//button[contains(., 'Allow all cookies')]"),
-                (By.XPATH, "//button[contains(., 'Allow essential and optional cookies')]"),
-                (By.XPATH, "//button[contains(., 'Accept All')]"),
-                (By.XPATH, "//button[contains(., 'Accept all')]"),
-                (By.XPATH, "//button[contains(., 'Allow All')]"),
-                (By.XPATH, "//span[contains(., 'Allow all cookies')]/ancestor::button"),
-                (By.XPATH, "//span[contains(., 'Allow all cookies')]/ancestor::div[@role='button']"),
-                # Text-based (Arabic)
-                (By.XPATH, "//button[contains(., 'السماح بجميع ملفات تعريف الارتباط')]"),
-                (By.XPATH, "//button[contains(., 'السماح')]"),
-                (By.XPATH, "//span[contains(., 'السماح')]/ancestor::button"),
-                (By.XPATH, "//button[contains(., 'قبول')]"),
-                # Class-based (blue primary button in dialog)
-                (By.XPATH, "//div[@role='dialog']//div[contains(@class, 'x1i10hfl')][contains(@class, 'x1yc453h')]"),
-                # Generic dialog button
-                (By.XPATH, "//div[@role='dialog']//button"),
-            ]
+            # PRIMARY METHOD: JavaScript click on span (TESTED & WORKING)
+            js_click_cookie = """
+            (function() {
+                // Method 1: Click inner span directly (MOST RELIABLE)
+                let spans = [...document.querySelectorAll('span')];
+                let target = spans.find(s => s.innerText === 'Allow all cookies');
+                if (target) { target.click(); return 'clicked_span_en'; }
+                
+                // Method 2: Arabic text
+                target = spans.find(s => s.innerText.includes('السماح'));
+                if (target) { target.click(); return 'clicked_span_ar'; }
+                
+                // Method 3: Fallback to aria-label div
+                let btn = document.querySelector('div[aria-label="Allow all cookies"]');
+                if (btn) { 
+                    let innerSpan = btn.querySelector('span');
+                    if (innerSpan) { innerSpan.click(); return 'clicked_inner_span'; }
+                    btn.click(); 
+                    return 'clicked_div'; 
+                }
+                
+                // Method 4: data-testid
+                btn = document.querySelector('[data-testid="cookie-policy-manage-dialog-accept-button"]');
+                if (btn) { btn.click(); return 'clicked_testid'; }
+                
+                // Method 5: First button in any dialog
+                let dialog = document.querySelector('div[role="dialog"]');
+                if (dialog) {
+                    let firstBtn = dialog.querySelector('button');
+                    if (firstBtn) { firstBtn.click(); return 'clicked_dialog_btn'; }
+                }
+                
+                return 'not_found';
+            })();
+            """
             
-            for by, selector in cookie_selectors:
-                try:
-                    elements = self.driver.find_elements(by, selector)
-                    for btn in elements:
-                        if btn.is_displayed():
-                            log(f"Found cookie button: {selector}", "INFO")
-                            try:
-                                btn.click()
-                            except:
-                                # JS click fallback
-                                self.driver.execute_script("arguments[0].click();", btn)
-                            log("Cookie consent accepted!", "OK")
-                            time.sleep(1)
-                            return True
-                except:
-                    continue
+            result = self.driver.execute_script(js_click_cookie)
             
-            # Try clicking first visible button in any dialog overlay
-            try:
-                dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
-                for dialog in dialogs:
-                    if dialog.is_displayed():
-                        buttons = dialog.find_elements(By.TAG_NAME, "button")
-                        if buttons:
-                            log("Found dialog, clicking first button...", "INFO")
-                            try:
-                                buttons[0].click()
-                            except:
-                                self.driver.execute_script("arguments[0].click();", buttons[0])
-                            time.sleep(1)
-                            return True
-            except:
-                pass
+            if result and result != 'not_found':
+                log(f"Cookie consent accepted ({result})!", "OK")
+                time.sleep(1)
+                return True
             
             log("No cookie consent dialog found", "INFO")
             return False
