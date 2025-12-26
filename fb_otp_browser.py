@@ -831,21 +831,22 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
             except Exception as e:
                 log(f"Check for 'Try another way' failed (non-critical): {e}", "WARN")
 
-            # USER REQUEST: Assume SMS option is selected by default and just click Continue.
-            # Skip all searching logic - the radio is pre-selected per user feedback.
-            log("Assuming SMS option is pre-selected (User Directive). Proceeding to Continue...", "INFO")
-             
-            # Optional: Quick check just to log what we see (non-blocking)
+            # STEP A: Click on SMS label (User Verified: labels.find(l => l.innerText.includes('sms')))
+            log("Clicking SMS option label...", "INFO")
             try:
                 labels = self.driver.find_elements(By.TAG_NAME, "label")
+                sms_clicked = False
                 for l in labels:
-                    if "sms" in l.text.lower() or number[-4:] in l.text:
-                         log(f"Verified SMS text present: {l.text[:30]}", "INFO")
-                         break
-            except: pass
-
-            found_sms_option = True # FORCE SUCCESS - don't fail here
-                
+                    if "sms" in l.text.lower():
+                        self.driver.execute_script("arguments[0].click();", l)
+                        log(f"Clicked SMS label: {l.text[:30]}", "OK")
+                        sms_clicked = True
+                        break
+                if not sms_clicked:
+                    log("No SMS label found - proceeding anyway", "WARN")
+            except Exception as e:
+                log(f"SMS label click failed (non-critical): {e}", "WARN")
+            
             time.sleep(0.5)
             
             # SUCCESS: We have an SMS option selected (or verified)
