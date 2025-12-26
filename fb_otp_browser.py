@@ -723,9 +723,15 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
             url = self.driver.current_url
             page_text = self.driver.find_element(By.TAG_NAME, "body").text.lower()
             
-            # Case 1: No Result
-            if "no result" in page_text or "didn't match" in page_text:
-                return "NOT_FOUND"
+            # Case 1: No Result - CHECK FIRST before anything else
+            not_found_patterns = [
+                "no result", "no search results", "didn't match", 
+                "لم يتم العثور", "لا توجد نتائج", "try again with other"
+            ]
+            for pattern in not_found_patterns:
+                if pattern in page_text:
+                    log(f"NOT_FOUND detected: '{pattern}'", "WARN")
+                    return "NOT_FOUND"
                 
             # Case 2: Multiple Accounts - Auto-select first account using JS
             if "this is my account" in page_text or "هذا حسابي" in page_text:
@@ -744,8 +750,12 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
                     time.sleep(2)
                     self._save_screenshot("4_Result_MULTIPLE_SELECTED")
                 return "MULTIPLE_ACCOUNTS"
+            
+            # Case 3: Still on identify page = NOT_FOUND
+            if "identify" in url:
+                return "NOT_FOUND"
                 
-            # Case 3: Recover Page (Direct success)
+            # Case 4: Recover Page (Direct success)
             if "recover" in url or "reset" in url:
                 return "FOUND"
 
