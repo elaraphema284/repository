@@ -552,22 +552,34 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
         """Handle cookie consent popup if it appears"""
         try:
             # Wait briefly for cookie dialog
-            time.sleep(3)
+            time.sleep(2)
             
             # Try to find and click "Allow all cookies" button
             cookie_selectors = [
+                # English variations
                 (By.XPATH, "//button[contains(text(), 'Allow all cookies')]"),
-                (By.XPATH, "//button[contains(text(), 'السماح بجميع ملفات تعريف الارتباط')]"),
+                (By.XPATH, "//button[contains(text(), 'Allow All')]"),
                 (By.XPATH, "//button[contains(text(), 'Accept All')]"),
                 (By.XPATH, "//button[contains(text(), 'Accept all')]"),
-                (By.XPATH, "//button[@data-cookiebanner='accept_button']"),
+                (By.XPATH, "//button[contains(text(), 'Allow essential')]"),
+                # Look for blue button (usually the accept button)
+                (By.XPATH, "//button[contains(@class, 'primary')]"),
+                (By.XPATH, "//div[@role='dialog']//button[2]"),  # Second button is usually Accept
+                # Arabic
+                (By.XPATH, "//button[contains(text(), 'السماح')]"),
+                (By.XPATH, "//button[contains(text(), 'قبول')]"),
+                # Data attributes
+                (By.CSS_SELECTOR, "button[data-cookiebanner='accept_button']"),
                 (By.CSS_SELECTOR, "button[data-testid='cookie-policy-manage-dialog-accept-button']"),
+                # Generic - look for any button with "cookie" nearby
+                (By.XPATH, "//div[contains(@class, 'cookie')]//button"),
             ]
             
             for by, selector in cookie_selectors:
                 try:
                     btn = self.driver.find_element(by, selector)
                     if btn and btn.is_displayed():
+                        log(f"Found cookie button: {selector}", "INFO")
                         btn.click()
                         log("Cookie consent accepted!", "OK")
                         time.sleep(1)
@@ -982,12 +994,20 @@ if __name__ == "__main__":
         browser = FacebookOTPBrowser(headless=True) # Ensure headless for batch
         try:
              res = browser.send_otp(arg)
+             # Always print last URL
+             last_url = res.get('last_url', res.get('otp_url', ''))
+             if last_url:
+                 print(f"Last URL: {last_url}")
+             
              # Print final status for shell script extraction
              if res['status'] == 'ERROR':
                  print(f"FINAL_STATUS_MSG: {res['message']}")
              elif res['status'] == 'OTP_SENT':
                   print("OTP_SENT") 
-                  print(f"Final URL: {res.get('last_url', '')}")
+             elif res['status'] == 'NOT_FOUND':
+                  print("FINAL_STATUS_MSG: Account Not Found")
+             else:
+                  print(f"FINAL_STATUS_MSG: {res.get('message', 'Unknown')}")
         except Exception as e:
              print(f"FINAL_STATUS_MSG: Critical Script Error: {e}")
 
