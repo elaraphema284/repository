@@ -884,29 +884,53 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
             
             # ---------------------------------------------------------
             # SIMPLE CONTINUE BUTTON CLICK (User Verified Selector)
+            # IMPORTANT: Avoid clicking "Not you?" button!
             # ---------------------------------------------------------
             log("Clicking 'Continue' button using verified selector...", "INFO")
             
+            continue_clicked = False
+            
+            # Method 1: Find by name='reset_action' (Most specific)
             try:
-                # Primary: button[name="reset_action"] - User confirmed this works
                 btn = self.driver.find_element(By.NAME, "reset_action")
-                btn.click()
-                log("Clicked Continue button (name=reset_action)!", "OK")
+                if btn.is_displayed():
+                    btn.click()
+                    log("Clicked Continue button (name=reset_action)!", "OK")
+                    continue_clicked = True
             except:
-                # Fallback: Try JS click if standard fails
+                pass
+            
+            # Method 2: Find Continue button by text explicitly (avoid "Not you?")
+            if not continue_clicked:
                 try:
-                    btn = self.driver.find_element(By.NAME, "reset_action")
-                    self.driver.execute_script("arguments[0].click();", btn)
-                    log("Clicked Continue button (JS fallback)!", "OK")
+                    buttons = self.driver.find_elements(By.TAG_NAME, "button")
+                    for b in buttons:
+                        btn_text = b.text.lower()
+                        # Look for Continue/متابعة but NOT "not you" / "ليس أنت"
+                        if ("continue" in btn_text or "متابعة" in btn_text) and "not" not in btn_text and "ليس" not in btn_text:
+                            b.click()
+                            log(f"Clicked Continue button (text match: {b.text[:20]})!", "OK")
+                            continue_clicked = True
+                            break
                 except:
-                    # Last resort: button[type='submit']
-                    try:
-                        btn = self.driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
-                        btn.click()
-                        log("Clicked Continue button (type=submit fallback)!", "OK")
-                    except Exception as e:
-                        log(f"❌ Continue button NOT clicked: {e}", "ERROR")
-                        return False, "CONTINUE_BTN_MISSING"
+                    pass
+            
+            # Method 3: button[type='submit'] but verify it's not "Not you"
+            if not continue_clicked:
+                try:
+                    btns = self.driver.find_elements(By.CSS_SELECTOR, "button[type='submit']")
+                    for b in btns:
+                        if "not" not in b.text.lower() and "ليس" not in b.text:
+                            b.click()
+                            log("Clicked Continue button (type=submit)!", "OK")
+                            continue_clicked = True
+                            break
+                except:
+                    pass
+            
+            if not continue_clicked:
+                log("❌ Continue button NOT clicked!", "ERROR")
+                return False, "CONTINUE_BTN_MISSING"
 
             time.sleep(2.0) # Wait for processing
             self._save_screenshot(step_name + "_success")
