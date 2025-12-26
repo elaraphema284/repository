@@ -984,9 +984,11 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
                         log(f"Error handling multiple accounts: {e}", "ERROR")
                         break
                 elif status == "FOUND":
-                    if accounts_processed > 0:
-                         break # Stop looping if we only found one
+                    log("Account FOUND - proceeding to SMS selection...", "OK")
+                    # Continue to Step 5 (no break)
+                    pass
                 else:
+                    log(f"Unknown status: {status}", "WARN")
                     break # Unknown status
 
 
