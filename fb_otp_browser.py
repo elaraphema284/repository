@@ -802,7 +802,8 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
                 return False, "SMS_NOT_FOUND"
                 
             log(f"✅ Found SMS Option: {sms_label.text}")
-            sms_label.click()
+            # Use JS click to avoid interception by spans/overlays
+            self.driver.execute_script("arguments[0].click();", sms_label)
             time.sleep(0.5)
             
             # Click Continue using JS (TESTED & WORKING)

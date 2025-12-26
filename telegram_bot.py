@@ -711,7 +711,7 @@ def trigger_github_workflow(numbers: list, repo: str, token: str, branch: str = 
             "inputs": inputs
         }
         
-        response = requests.post(url, headers=headers, json=data)
+        response = requests.post(url, headers=headers, json=data, timeout=15)
         
         # GitHub API returns 204 (No Content) on success
         if response.status_code in [200, 204]:
@@ -948,7 +948,7 @@ async def update_github_file(repo: str, token: str, file_path: str, content: str
             if sha:
                 data["sha"] = sha
                 
-            put_resp = requests.put(url, headers=headers, json=data)
+            put_resp = requests.put(url, headers=headers, json=data, timeout=30)
             if put_resp.status_code in [200, 201]:
                 return True
             else:
@@ -1021,11 +1021,11 @@ async def stop_all_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await status_msg.edit_text(report)
 
 async def deploy_scripts_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Deploy local files to all active servers"""
+    """Deploy local files to all active servers (Parallel & Optimized)"""
     if update.effective_chat.id != ALLOWED_CHAT_ID:
         return
 
-    status_msg = await update.message.reply_text("🚀 جاري نشر التحديثات على السيرفرات...")
+    status_msg = await update.message.reply_text("🚀 جاري تحضير النشر المتوازي (Parallel Deploy)...")
     
     # Read local files
     files_to_deploy = {
@@ -1034,7 +1034,7 @@ async def deploy_scripts_command(update: Update, context: ContextTypes.DEFAULT_T
         "requirements.txt": "requirements.txt"
     }
     
-    # VPN config upload - enabled
+    # VPN config upload
     vpn_folder = "vpn"
     if os.path.exists(vpn_folder):
         for filename in os.listdir(vpn_folder):
@@ -1059,44 +1059,37 @@ async def deploy_scripts_command(update: Update, context: ContextTypes.DEFAULT_T
         await status_msg.edit_text("❌ لم يتم العثور على ملفات لنشرها.")
         return
 
-    results = []
-    server_count = len([s for s in SERVERS.values() if s['token']])
-    current = 0
-    
-    for key, server in SERVERS.items():
-        # Skip if token is missing
+    # Helper for single server deployment
+    async def deploy_server(key, server):
         if not server['token']:
-            results.append(f"⚠️ {server['name']}: لا يوجد توكن")
-            continue
-        
-        current += 1
-        # Update progress
-        try:
-            await status_msg.edit_text(f"🚀 جاري نشر التحديثات... ({current}/{server_count})\n📡 {server['name']}")
-        except:
-            pass
+            return f"⚠️ {server['name']}: لا يوجد توكن"
             
-        # Use configured branch, default to master
-        branch = server.get('branch', 'master')
-        
-        # Deploy all files
-        files_success = []
-        logger.info(f"Deploying {len(file_contents)} files to {server['repo']}")
-        for remote_path, content in file_contents.items():
-            success = await update_github_file(server['repo'], server['token'], remote_path, content, branch)
-            files_success.append(success)
-        
-        # All files must succeed
-        all_success = all(files_success)
-        icon = "✅" if all_success else "❌"
-        results.append(f"{icon} {server['name']} ({sum(files_success)}/{len(files_success)} files)")
-        
-    # Count VPN configs
-    vpn_count = len([f for f in file_contents.keys() if f.startswith('vpn/')])
+        try:
+            branch = server.get('branch', 'master')
+            files_success = []
+            
+            # process files sequentially for this server to avoid rate limits
+            for remote_path, content in file_contents.items():
+                success = await update_github_file(server['repo'], server['token'], remote_path, content, branch)
+                files_success.append(success)
+            
+            all_success = all(files_success)
+            icon = "✅" if all_success else "❌"
+            return f"{icon} {server['name']} ({sum(files_success)}/{len(files_success)})"
+        except Exception as e:
+            return f"⚠️ {server['name']}: خطأ ({str(e)})"
+
+    await status_msg.edit_text(f"🚀 جاري النشر على {len(SERVERS)} سيرفر في وقت واحد...")
     
-    report = "📊 **تقرير النشر (Deploy Report)**:\n\n" + "\n".join(results)
-    report += f"\n\n📦 الملفات المنشورة ({len(file_contents)} total):\n• fb_otp_browser.py\n• .github/workflows/fb_otp.yml\n• requirements.txt"
-    report += f"\n• vpn/ configs: {vpn_count} files"
+    # Create tasks
+    tasks = [deploy_server(k, s) for k, s in SERVERS.items()]
+    results = await asyncio.gather(*tasks)
+    
+    # Report
+    vpn_count = len([f for f in file_contents.keys() if f.startswith('vpn/')])
+    report = "📊 **تقرير النشر (Parallel)**:\n\n" + "\n".join(results)
+    report += f"\n\n📦 الملفات ({len(file_contents)} total) - VPN: {vpn_count}"
+    
     await status_msg.edit_text(report)
 
 
