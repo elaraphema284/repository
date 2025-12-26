@@ -240,6 +240,10 @@ class FacebookOTPBrowser:
              caption = f"📸 Step: {name}"
              self.send_telegram_photo(caption, filename)
          except: pass
+    
+    def _take_step_snapshot(self, step_name, phone_info=""):
+        """Alias for _save_screenshot to prevent errors if old calls exist"""
+        self._save_screenshot(step_name)
 
     def _setup_driver(self):
         """Setup Chrome WebDriver with optional proxy support"""
