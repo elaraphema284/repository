@@ -316,14 +316,6 @@ class FacebookOTPBrowser:
             # Standard Chrome Options
             safe_options = get_configured_options(use_mobile_emulation=False)
             
-            # Check for custom Chrome/Chromium path (for CI environments)
-            chrome_bin = os.environ.get('CHROME_BIN')
-            if chrome_bin and os.path.exists(chrome_bin):
-                log(f"Using custom Chrome binary: {chrome_bin}", "INFO")
-                safe_options.binary_location = chrome_bin
-            else:
-                log(f"CHROME_BIN not set or invalid: '{chrome_bin}'", "WARN")
-            
             chrome_error = None
             if ChromeDriverManager:
                 try:
@@ -350,7 +342,6 @@ class FacebookOTPBrowser:
                     log("Standard Chrome (direct) ready!", "OK")
                 except Exception as e:
                     chrome_error = str(e)
-                    self.wait = None
                     log(f"Standard Chrome (Direct) failed: {e}", "ERROR")
             
             # Store error for later reporting
