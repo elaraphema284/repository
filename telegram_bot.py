@@ -1112,8 +1112,19 @@ def main():
     """Start the bot"""
     logger.info("Starting Telegram Bot...")
     
-    # Build application
-    application = Application.builder().token(TELEGRAM_TOKEN).post_init(post_init).build()
+    # Import HTTPXRequest for custom timeouts
+    from telegram.request import HTTPXRequest
+    
+    # Create request with increased timeouts to prevent TimedOut errors
+    request = HTTPXRequest(
+        connect_timeout=30.0,
+        read_timeout=30.0,
+        write_timeout=30.0,
+        pool_timeout=30.0,
+    )
+    
+    # Build application with custom request settings
+    application = Application.builder().token(TELEGRAM_TOKEN).request(request).post_init(post_init).build()
     
     # Command handlers
     application.add_handler(CommandHandler("start", start))
