@@ -1117,14 +1117,29 @@ def main():
     
     # Create request with increased timeouts to prevent TimedOut errors
     request = HTTPXRequest(
-        connect_timeout=30.0,
-        read_timeout=30.0,
-        write_timeout=30.0,
-        pool_timeout=30.0,
+        connect_timeout=60.0,
+        read_timeout=60.0,
+        write_timeout=60.0,
+        pool_timeout=60.0,
+    )
+    
+    # Separate request for get_updates (polling)
+    get_updates_request = HTTPXRequest(
+        connect_timeout=60.0,
+        read_timeout=60.0,
+        write_timeout=60.0,
+        pool_timeout=60.0,
     )
     
     # Build application with custom request settings
-    application = Application.builder().token(TELEGRAM_TOKEN).request(request).post_init(post_init).build()
+    application = (
+        Application.builder()
+        .token(TELEGRAM_TOKEN)
+        .request(request)
+        .get_updates_request(get_updates_request)
+        .post_init(post_init)
+        .build()
+    )
     
     # Command handlers
     application.add_handler(CommandHandler("start", start))
