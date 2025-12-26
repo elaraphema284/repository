@@ -761,9 +761,13 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
                     self._save_screenshot("4_Result_MULTIPLE_SELECTED")
                 return "MULTIPLE_ACCOUNTS"
             
-            # Case 3: Still on identify page = NOT_FOUND
+            # Case 3: Still on identify page (but with ctx=recover = need to click "Try another way")
             if "identify" in url:
-                return "NOT_FOUND"
+                if "ctx=recover" in url:
+                    log("Detected identify page with ctx=recover - treating as TRY_ANOTHER_WAY", "INFO")
+                    return "TRY_ANOTHER_WAY"
+                else:
+                    return "NOT_FOUND"
                 
             # Case 4: Recover Page (Direct success)
             if "recover" in url or "reset" in url:
@@ -874,10 +878,9 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
             if not sms_clicked:
                 log("No SMS option found - proceeding anyway", "WARN")
             
-            time.sleep(1.0) # Wait for selection to register
+            time.sleep(2.0) # Wait for selection to register (increased from 1.0)
             
             # SUCCESS: We have an SMS option selected (or verified)
-            time.sleep(0.5)
             
             # ---------------------------------------------------------
             # SIMPLE CONTINUE BUTTON CLICK (User Verified Selector)
