@@ -555,19 +555,23 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
             time.sleep(2)
             
             # Try to find and click "Allow all cookies" button
+            # We use contains(., 'text') to match text inside nested spans/divs
             cookie_selectors = [
                 # English variations
-                (By.XPATH, "//button[contains(text(), 'Allow all cookies')]"),
-                (By.XPATH, "//button[contains(text(), 'Allow All')]"),
-                (By.XPATH, "//button[contains(text(), 'Accept All')]"),
-                (By.XPATH, "//button[contains(text(), 'Accept all')]"),
-                (By.XPATH, "//button[contains(text(), 'Allow essential')]"),
+                (By.XPATH, "//button[contains(., 'Allow all cookies')]"),
+                (By.XPATH, "//span[contains(., 'Allow all cookies')]"),
+                (By.XPATH, "//div[contains(@aria-label, 'Allow all cookies')]"),
+                (By.XPATH, "//button[contains(., 'Allow All')]"),
+                (By.XPATH, "//button[contains(., 'Accept All')]"),
+                (By.XPATH, "//button[contains(., 'Accept all')]"),
+                (By.XPATH, "//button[contains(., 'Allow essential')]"),
                 # Look for blue button (usually the accept button)
-                (By.XPATH, "//button[contains(@class, 'primary')]"),
-                (By.XPATH, "//div[@role='dialog']//button[2]"),  # Second button is usually Accept
+                (By.XPATH, "//div[@role='dialog']//button[contains(@class, 'Selected')]"),
+                (By.XPATH, "//div[@role='dialog']//div[@role='button' and contains(@class, 'primary')]"),
                 # Arabic
-                (By.XPATH, "//button[contains(text(), 'السماح')]"),
-                (By.XPATH, "//button[contains(text(), 'قبول')]"),
+                (By.XPATH, "//button[contains(., 'السماح')]"),
+                (By.XPATH, "//span[contains(., 'السماح')]"),
+                (By.XPATH, "//button[contains(., 'قبول')]"),
                 # Data attributes
                 (By.CSS_SELECTOR, "button[data-cookiebanner='accept_button']"),
                 (By.CSS_SELECTOR, "button[data-testid='cookie-policy-manage-dialog-accept-button']"),
@@ -577,12 +581,13 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
             
             for by, selector in cookie_selectors:
                 try:
-                    btn = self.driver.find_element(by, selector)
-                    if btn and btn.is_displayed():
+                    # Use a short explicit wait for the element
+                    btn = WebDriverWait(self.driver, 1).until(EC.element_to_be_clickable((by, selector)))
+                    if btn:
                         log(f"Found cookie button: {selector}", "INFO")
                         btn.click()
                         log("Cookie consent accepted!", "OK")
-                        time.sleep(1)
+                        time.sleep(2) # Wait for dialog to disappear
                         return True
                 except:
                     continue
@@ -614,6 +619,8 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
     def step2_enter_phone(self, number):
         """Step 2: Enter number (Desktop Flow)"""
         step_name = "2_enter_phone"
+        # Check cookies again (sometimes appears late)
+        self._handle_cookie_consent()
         try:
             # Desktop ID is 'identify_email'
             self.wait.until(EC.presence_of_element_located((By.ID, "identify_email")))
@@ -629,6 +636,8 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
     def step3_click_search(self):
         """Step 3: Click Search"""
         step_name = "3_click_search"
+        # Check cookies crucial here as it blocks the button
+        self._handle_cookie_consent()
         try:
             # Desktop ID is 'did_submit'
             btn = self.driver.find_element(By.ID, "did_submit")
@@ -637,6 +646,9 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
             self._save_screenshot(step_name)
             return True
         except Exception as e:
+            # Final attempt to clear cookie if we couldn't find/click
+            if self._handle_cookie_consent():
+                 log("Found and cleared cookie dialog late - retrying step might be needed but failed for now", "WARN")
             self._handle_failure(step_name)
             return False
 
