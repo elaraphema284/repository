@@ -1112,18 +1112,16 @@ def main():
     
     # Create request with increased timeouts to prevent TimedOut errors
     request = HTTPXRequest(
-        connect_timeout=60.0,
-        read_timeout=60.0,
-        write_timeout=60.0,
-        pool_timeout=60.0,
+        connect_timeout=180.0,
+        read_timeout=180.0,
+        write_timeout=180.0,
     )
     
     # Separate request for get_updates (polling)
     get_updates_request = HTTPXRequest(
-        connect_timeout=60.0,
-        read_timeout=60.0,
-        write_timeout=60.0,
-        pool_timeout=60.0,
+        connect_timeout=180.0,
+        read_timeout=180.0,
+        write_timeout=180.0,
     )
     
     # Build application with custom request settings
@@ -1155,7 +1153,7 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     
     logger.info("Bot is running...")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
 
 if __name__ == '__main__':
