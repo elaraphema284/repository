@@ -701,7 +701,7 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
                 self.driver.execute_script("arguments[0].click();", btn)
                 log("Search button clicked (JS)!", "OK")
             
-            time.sleep(2) # Wait for search (Optimized)
+            time.sleep(1.5) # Wait for search (Optimized)
             self._save_screenshot(step_name)
             return True
         except Exception as e:
@@ -827,7 +827,7 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
                 log("❌ Continue button not found", "ERROR")
                 return False, "CONTINUE_BTN_MISSING"
 
-            time.sleep(2)
+            time.sleep(1.5)
             self._save_screenshot(step_name + "_success")
             return True, "OK"
 
