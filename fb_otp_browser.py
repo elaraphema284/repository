@@ -831,32 +831,48 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
             except Exception as e:
                 log(f"Check for 'Try another way' failed (non-critical): {e}", "WARN")
 
-            # STEP A: Click on SMS label (User Verified: labels.find(l => l.innerText.includes('sms')))
+            # STEP A: Click on SMS option (Using exact selector from browser success test)
             # IMPORTANT: This click is required to prevent redirect loops, even if pre-selected.
-            log("Clicking SMS option label (Required)...", "INFO")
+            log("Clicking SMS option (Required)...", "INFO")
+            sms_clicked = False
+            
+            # Method 1: Exact ID selector that worked in browser test
             try:
-                # Find label with 'sms' text
-                labels = self.driver.find_elements(By.TAG_NAME, "label")
-                sms_clicked = False
-                for l in labels:
-                    if "sms" in l.text.lower():
-                        # Use JS click for reliability
-                        self.driver.execute_script("arguments[0].click();", l)
-                        log(f"Clicked SMS label: {l.text[:30]}", "OK")
-                        sms_clicked = True
-                        break
-                
-                # Fallback: finding the radio input directly and clicking its parent
-                if not sms_clicked:
-                     radios = self.driver.find_elements(By.CSS_SELECTOR, "input[type='radio']")
-                     for r in radios:
-                         if "sms" in r.get_attribute("outerHTML").lower(): # Check if HTML implies SMS
-                              self.driver.execute_script("arguments[0].click();", r)
-                              log("Clicked generic SMS radio button", "OK")
-                              break
-
-            except Exception as e:
-                log(f"SMS label click warning: {e}", "WARN")
+                sms_radio = self.driver.find_element(By.CSS_SELECTOR, "input[id^='send_sms']")
+                self.driver.execute_script("arguments[0].click();", sms_radio)
+                log("Clicked SMS radio (id^=send_sms)!", "OK")
+                sms_clicked = True
+            except:
+                pass
+            
+            # Method 2: Find label with 'sms' text
+            if not sms_clicked:
+                try:
+                    labels = self.driver.find_elements(By.TAG_NAME, "label")
+                    for l in labels:
+                        if "sms" in l.text.lower():
+                            self.driver.execute_script("arguments[0].click();", l)
+                            log(f"Clicked SMS label: {l.text[:30]}", "OK")
+                            sms_clicked = True
+                            break
+                except:
+                    pass
+            
+            # Method 3: Any radio button with SMS context
+            if not sms_clicked:
+                try:
+                    radios = self.driver.find_elements(By.CSS_SELECTOR, "input[type='radio']")
+                    for r in radios:
+                        if "sms" in r.get_attribute("outerHTML").lower():
+                            self.driver.execute_script("arguments[0].click();", r)
+                            log("Clicked generic SMS radio button", "OK")
+                            sms_clicked = True
+                            break
+                except:
+                    pass
+            
+            if not sms_clicked:
+                log("No SMS option found - proceeding anyway", "WARN")
             
             time.sleep(1.0) # Wait for selection to register
             
