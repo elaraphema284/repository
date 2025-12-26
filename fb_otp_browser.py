@@ -853,6 +853,23 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
                     log(f"ID Match failed: {e}", "WARN")
 
             if not found_sms_option:
+                # PRIORITY 2.5: SCAN ALL RADIOS (Generic fallback)
+                try:
+                    all_radios = self.driver.find_elements(By.CSS_SELECTOR, "input[type='radio']")
+                    for r in all_radios:
+                        # Get text of parent or body text near it?
+                        # Best is to check parent text
+                        try:
+                            parent_text = r.find_element(By.XPATH, "./..").text.lower()
+                            if "sms" in parent_text or "رسالة" in parent_text or number[-4:] in parent_text: # match last 4 digits
+                                log(f"Found SMS radio by Context: {parent_text[:30]}...", "OK")
+                                self.driver.execute_script("arguments[0].click();", r)
+                                found_sms_option = True
+                                break
+                        except: pass
+                except: pass
+
+            if not found_sms_option:
                 # PRIORITY 3: Find SMS label by Text (Original Logic)
                 last_2 = number[-2:]
                 labels = self.driver.find_elements(By.TAG_NAME, "label")
