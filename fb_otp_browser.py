@@ -806,49 +806,25 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
             self.driver.execute_script("arguments[0].click();", sms_label)
             time.sleep(0.5)
             
-            # Click Continue using JS (TESTED & WORKING)
+            # Click Continue using JS (TESTED & WORKING in browser)
             js_click_continue = """
             (function() {
-                // Method 1: button[name='reset_action'] (most reliable)
+                // Method 1: Click span with "Continue" text directly (MOST RELIABLE - TESTED)
+                let spans = [...document.querySelectorAll('span')];
+                let target = spans.find(s => s.innerText === 'Continue');
+                if (target) { target.click(); return 'clicked_span_continue'; }
+                
+                // Method 2: Arabic text
+                target = spans.find(s => s.innerText === 'متابعة');
+                if (target) { target.click(); return 'clicked_span_arabic'; }
+                
+                // Method 3: button[name='reset_action'] (fallback)
                 let btn = document.querySelector('button[name="reset_action"]');
                 if (btn) { btn.click(); return 'clicked_reset_action'; }
                 
-                // Method 2: Blue primary button (Facebook uses specific classes)
-                btn = document.querySelector('div[role="button"][tabindex="0"]');
-                if (btn && (btn.innerText.includes('Continue') || btn.innerText.includes('متابعة'))) { 
-                    btn.click(); return 'clicked_div_role_button'; 
-                }
-                
-                // Method 3: Any element with Continue text
-                let allElements = document.querySelectorAll('*');
-                for (let el of allElements) {
-                    if (el.innerText === 'Continue' && el.offsetParent !== null) {
-                        el.click(); return 'clicked_exact_continue';
-                    }
-                }
-                
-                // Method 4: button.selected
-                btn = document.querySelector('button.selected');
-                if (btn) { btn.click(); return 'clicked_selected'; }
-                
-                // Method 5: button type=submit
+                // Method 4: button type=submit
                 btn = document.querySelector('button[type="submit"]');
                 if (btn) { btn.click(); return 'clicked_submit'; }
-                
-                // Method 6: span text search
-                let spans = [...document.querySelectorAll('span')];
-                let target = spans.find(s => s.innerText === 'Continue' || s.innerText === 'متابعة');
-                if (target) { target.click(); return 'clicked_span'; }
-                
-                // Method 7: button text search
-                let buttons = [...document.querySelectorAll('button')];
-                target = buttons.find(b => b.innerText.includes('Continue') || b.innerText.includes('متابعة'));
-                if (target) { target.click(); return 'clicked_button_text'; }
-                
-                // Method 8: a tag with Continue
-                let links = [...document.querySelectorAll('a')];
-                target = links.find(a => a.innerText.includes('Continue'));
-                if (target) { target.click(); return 'clicked_link'; }
                 
                 return 'not_found';
             })();
