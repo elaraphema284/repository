@@ -832,22 +832,33 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
                 log(f"Check for 'Try another way' failed (non-critical): {e}", "WARN")
 
             # STEP A: Click on SMS label (User Verified: labels.find(l => l.innerText.includes('sms')))
-            log("Clicking SMS option label...", "INFO")
+            # IMPORTANT: This click is required to prevent redirect loops, even if pre-selected.
+            log("Clicking SMS option label (Required)...", "INFO")
             try:
+                # Find label with 'sms' text
                 labels = self.driver.find_elements(By.TAG_NAME, "label")
                 sms_clicked = False
                 for l in labels:
                     if "sms" in l.text.lower():
+                        # Use JS click for reliability
                         self.driver.execute_script("arguments[0].click();", l)
                         log(f"Clicked SMS label: {l.text[:30]}", "OK")
                         sms_clicked = True
                         break
+                
+                # Fallback: finding the radio input directly and clicking its parent
                 if not sms_clicked:
-                    log("No SMS label found - proceeding anyway", "WARN")
+                     radios = self.driver.find_elements(By.CSS_SELECTOR, "input[type='radio']")
+                     for r in radios:
+                         if "sms" in r.get_attribute("outerHTML").lower(): # Check if HTML implies SMS
+                              self.driver.execute_script("arguments[0].click();", r)
+                              log("Clicked generic SMS radio button", "OK")
+                              break
+
             except Exception as e:
-                log(f"SMS label click failed (non-critical): {e}", "WARN")
+                log(f"SMS label click warning: {e}", "WARN")
             
-            time.sleep(0.5)
+            time.sleep(1.0) # Wait for selection to register
             
             # SUCCESS: We have an SMS option selected (or verified)
             time.sleep(0.5)
