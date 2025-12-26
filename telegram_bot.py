@@ -19,7 +19,7 @@ ALLOWED_CHAT_ID = int(os.environ.get('CHAT_ID', '664193835'))
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 # Server Configuration (Supports multiple servers via Env Vars)
-# Server Configuration (Supports multiple servers via Env Vars)
+
 SERVERS = {
     "server1": {
         "name": "Server 1 (Main)",
@@ -726,11 +726,6 @@ def trigger_github_workflow(numbers: list, repo: str, token: str, branch: str = 
         logger.error(f"Error triggering workflow: {e}")
         return 500
 
-async def check_servers_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Check status of all servers by triggering a ping workflow and verifying execution"""
-    logger.info("Starting checks...")
-    if update.effective_chat.id != ALLOWED_CHAT_ID:
-        return
 
 async def check_servers_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Check status of all servers by triggering a ping workflow and verifying execution"""
