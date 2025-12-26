@@ -1020,11 +1020,12 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
                 result["message"] = f"Failed to setup browser: {error_detail}"
                 return result
             
-            # LOOP for Multiple Accounts (Default 1 pass)
-            max_accounts_to_process = 5
+            # LOOP for Multiple Accounts (Default 1 pass - NO RETRY)
+            # User Request: Disable loop on failure.
+            max_accounts_to_process = 1 
             accounts_processed = 0
             
-            # Only loop if we detect multiple accounts, but we need an outer loop to handle the retry logic
+            # Only loop if we explicitly detect multiple accounts later
             while accounts_processed < max_accounts_to_process:
                 
                 # If this is the 2nd+ iteration, we need to restart the flow to get a clean state
@@ -1086,6 +1087,9 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
                         
                         num_accounts = len(valid_buttons)
                         log(f"Found {num_accounts} valid account buttons.", "INFO")
+                        
+                        # Only now do we increase the loop limit
+                        max_accounts_to_process = num_accounts
                         
                         if accounts_processed >= num_accounts:
                             log("All accounts processed.", "OK")
