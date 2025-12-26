@@ -723,15 +723,37 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, {{urls: ["<all_urls>"]}
             time.sleep(1)
             
             # Click Continue
-            # Desktop: Usually <button type="submit">Continue</button>
-            # Arabic: "متابعة"
-            continue_btns = self.driver.find_elements(By.CSS_SELECTOR, "button[type='submit']")
+            # Enhanced selectors for Continue button
+            continue_selectors = [
+                (By.CSS_SELECTOR, "button[type='submit']"),
+                (By.XPATH, "//button[contains(text(), 'Continue')]"),
+                (By.XPATH, "//button[contains(text(), 'متابعة')]"),
+                (By.XPATH, "//span[contains(text(), 'Continue')]"),
+                (By.XPATH, "//div[@role='button' and contains(text(), 'Continue')]"),
+                (By.ID, "u_0_0_v"), # Example ID, might change
+                (By.CSS_SELECTOR, ".uiButtonConfirm"),
+                (By.XPATH, "//button[contains(@class, 'selected')]"),
+            ]
+            
             clicked_cont = False
-            for btn in continue_btns:
-                if btn.is_displayed():
-                    btn.click()
-                    clicked_cont = True
-                    break
+            for by, selector in continue_selectors:
+                try:
+                    btns = self.driver.find_elements(by, selector)
+                    for btn in btns:
+                        if btn.is_displayed():
+                            log(f"Found Continue button: {selector}", "INFO")
+                             # Cookie check before click
+                            self._handle_cookie_consent()
+                            try:
+                                btn.click()
+                                clicked_cont = True
+                            except:
+                                log(f"Standard click failed for {selector}, trying JS...", "WARN")
+                                self.driver.execute_script("arguments[0].click();", btn)
+                                clicked_cont = True
+                            break
+                    if clicked_cont: break
+                except: continue
             
             if not clicked_cont:
                 # Try by text
